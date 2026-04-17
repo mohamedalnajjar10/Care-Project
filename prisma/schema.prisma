@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum OtpPurpose {
+  SIGN_UP
+  SIGN_IN
+}
+
+enum UserRole {
+  PATIENT
+  ADMIN
+  DOCTOR
+}
+
+enum AddressLabel {
+  HOME
+  WORK
+  OTHER
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  RESCHEDULED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYPAL
+  VISA_CARD
+  APPLE_PAY
+}
+
+enum NotificationType {
+  APPOINTMENT_CREATED
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  REVIEW_RECEIVED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  fullName      String
+  mobile        String?   @unique
+  email         String?   @unique
+  googleId      String?   @unique
+  avatar        String?   @db.Text
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  role          UserRole  @default(PATIENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  otps                OtpCode[]
+  refreshTokens       RefreshToken[]
+  addresses           UserAddress[]
+  doctorProfile       DoctorProfile?
+  favoriteDoctors     FavoriteDoctor[]
+  patientAppointments Appointment[]      @relation("PatientAppointments")
+  notifications       Notification[]
+  reviews             Review[]
+
+  @@index([mobile])
+  @@index([email])
+  @@index([googleId])
+}
+
+model UserAddress {
+  id               String       @id @default(uuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label            AddressLabel @default(HOME)
+  title            String?      @db.VarChar(100)
+  formattedAddress String       @db.VarChar(500)
+  placeId          String?      @db.VarChar(255)
+  latitude         Decimal      @db.Decimal(10, 7)
+  longitude        Decimal      @db.Decimal(10, 7)
+  street           String?      @db.VarChar(255)
+  area             String?      @db.VarChar(255)
+  city             String?      @db.VarChar(100)
+  state            String?      @db.VarChar(100)
+  country          String?      @db.VarChar(100)
+  postalCode       String?      @db.VarChar(30)
+  buildingNumber   String?      @db.VarChar(50)
+  floor            String?      @db.VarChar(50)
+  apartmentNumber  String?      @db.VarChar(50)
+  landmark         String?      @db.VarChar(255)
+  notes            String?      @db.VarChar(500)
+  isDefault        Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@index([city])
+  @@index([country])
+}
+
+model PendingRegistration {
+  id        String   @id @default(uuid())
+  fullName  String
+  mobile    String   @unique
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OtpCode {
+  id               String     @id @default(uuid())
+  mobile           String
+  purpose          OtpPurpose
+  hashedCode       String
+  userId           String?
+  user             User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt        DateTime
+  resendAllowedAt  DateTime?
+  consumedAt       DateTime?
+  createdAt        DateTime   @default(now())
+
+  @@index([mobile, purpose])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model OtpAttempt {
+  id           String     @id @default(uuid())
+  mobile       String
+  purpose      OtpPurpose
+  attempts     Int        @default(0)
+  blockedUntil DateTime?
+  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now())
+
+  @@unique([mobile, purpose])
+  @@index([mobile, purpose])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique @db.VarChar(255)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Specialty {
+  id        String          @id @default(uuid())
+  name      String          @unique
+  iconUrl   String?
+  doctors   DoctorProfile[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model DoctorProfile {
+  id              String           @id @default(uuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialtyId     String
+  specialty       Specialty        @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  hospitalName    String           @db.VarChar(255)
+  workingHours    String           @db.VarChar(100)
+  experience      Int              @default(0)
+  consultationFee Decimal          @default(0) @db.Decimal(10, 2)
+  rating          Float            @default(0.0)
+  reviewsCount    Int              @default(0)
+  about           String?          @db.Text
+  favoritedBy     FavoriteDoctor[]
+  appointments    Appointment[]
+  reviews         Review[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([specialtyId])
+  @@index([rating])
+}
+
+model FavoriteDoctor {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorProfileId String
+  doctorProfile   DoctorProfile @relation(fields: [doctorProfileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@unique([userId, doctorProfileId])
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  patientId       String
+  patient         User              @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  doctorProfileId String
+  doctorProfile   DoctorProfile     @relation(fields: [doctorProfileId], references: [id], onDelete: Cascade)
+  appointmentDate DateTime
+  status          AppointmentStatus @default(PENDING)
+  notes           String?           @db.Text
+  cancelReason    String?           @db.Text
+  payment         Payment?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([doctorProfileId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@index([patientId, status])
+  @@index([doctorProfileId, appointmentDate])
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  appointmentId        String        @unique
+  appointment          Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("USD") @db.VarChar(3)
+  paymentMethod        PaymentMethod
+  status               PaymentStatus @default(PENDING)
+  transactionId        String?       @unique @db.VarChar(255)
+  paymentIntentId      String?       @db.VarChar(255)
+  paymentProviderId    String?       @db.VarChar(255)
+  paymentProviderData  Json?
+  failureReason        String?       @db.Text
+  refundTransactionId  String?       @db.VarChar(255)
+  refundedAt           DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([appointmentId])
+  @@index([transactionId])
+  @@index([status])
+}
+
+model Review {
+  id              String        @id @default(uuid())
+  patientId       String
+  patient         User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorProfileId String
+  doctorProfile   DoctorProfile @relation(fields: [doctorProfileId], references: [id], onDelete: Cascade)
+  rating          Float         @db.Float
+  comment         String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([patientId, doctorProfileId])
+  @@index([doctorProfileId])
+  @@index([rating])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String           @db.VarChar(255)
+  message   String           @db.Text
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+}

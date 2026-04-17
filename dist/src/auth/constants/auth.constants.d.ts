@@ -1,0 +1,31 @@
+export declare const AUTH_CONSTANTS: {
+    readonly MIN_PASSWORD_LENGTH: 8;
+    readonly MAX_PASSWORD_LENGTH: 128;
+    readonly OTP_LENGTH: 6;
+    readonly OTP_EXPIRY_SECONDS: 180;
+    readonly OTP_RESEND_LOCK_SECONDS: 60;
+    readonly MAX_LOGIN_ATTEMPTS: 5;
+    readonly MAX_OTP_ATTEMPTS: 5;
+    readonly LOGIN_BLOCK_SECONDS: 900;
+    readonly OTP_BLOCK_SECONDS: 900;
+    readonly JWT_EXPIRY_DEFAULT: "90d";
+    readonly REFRESH_TOKEN_LENGTH: 32;
+    readonly ALLOWED_MOBILE_TYPES: readonly ["STUDENT", "PATIENT", "PREGNANT", "CHRONIC"];
+    readonly BCRYPT_ROUNDS: 12;
+    readonly MAX_FULL_NAME_LENGTH: 100;
+};
+export declare const AUTH_ERROR_MESSAGES: {
+    readonly INVALID_CREDENTIALS: "Invalid credentials";
+    readonly ACCOUNT_LOCKED: "Account temporarily locked";
+    readonly ACCOUNT_DEACTIVATED: "Account is deactivated";
+    readonly MOBILE_ALREADY_VERIFIED: "Mobile already verified";
+    readonly OTP_EXPIRED: "OTP has expired. Please request a new one.";
+    readonly OTP_INVALID: "Invalid OTP";
+    readonly NO_OTP_FOUND: "No OTP found. Please request a new one.";
+    readonly USER_NOT_FOUND: "User not found";
+    readonly MOBILE_ALREADY_REGISTERED: "Mobile number already registered";
+    readonly EMAIL_ALREADY_REGISTERED: "Email already registered";
+    readonly INVALID_USER_TYPE: "Invalid user type for mobile registration";
+    readonly INVALID_PHONE_NUMBER: "Invalid phone number";
+    readonly TOO_MANY_ATTEMPTS: "Too many attempts. Try again later.";
+};
